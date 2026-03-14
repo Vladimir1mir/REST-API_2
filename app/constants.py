@@ -1,0 +1,3 @@
+SUCCESS_RESPONSE = {"status": 'Success!'}
+
+TOKEN_LIFETIME_SEC = 172_800

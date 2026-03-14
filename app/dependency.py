@@ -1,0 +1,36 @@
+from fastapi import Depends, Header, HTTPException
+from typing import Annotated
+from models import Session, Token
+from sqlalchemy import select
+import uuid, datetime
+from constants import TOKEN_LIFETIME_SEC
+from sqlalchemy.ext.asyncio import AsyncSession
+
+async def get_session() -> AsyncSession:
+    async with Session() as session:
+        yield session
+
+SessionDependency = Annotated[AsyncSession, Depends(get_session, use_cache=True)]
+
+
+async def get_token(checked_token: Annotated[uuid.UUID, Header()],
+                    session: SessionDependency) -> Token:
+    """
+    Функция проверки токена, на валидность
+
+    :param checked_token: токен в формате UUID
+    :param session: объект сессии БД
+    :return: возвращаем объект типа Token
+    """
+
+    query = select(Token).where(
+        Token.token == checked_token, Token.creation_time >=
+        (datetime.datetime.now() - datetime.timedelta(seconds=TOKEN_LIFETIME_SEC)),
+    )
+    token = await session.scalar(query)
+    if token is None:
+        raise HTTPException(status_code=401, detail="Token not found or Not valid")
+    return token
+
+
+TokenDependency = Annotated[Token, Depends(get_token)]
